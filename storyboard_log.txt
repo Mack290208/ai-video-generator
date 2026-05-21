@@ -1,0 +1,34 @@
+﻿[storyboard] llm_storyboard_decision_tree.json
+  title    = 鍐崇瓥鏍戝叆闂?
+  segments = 5
+  target   = 60s
+  flags    = 1
+    [flag] wanted=concept_compare锛堝弻鏍忔枃瀛楀姣旓級 -> fallback=bullet_summary
+
+>>> [1/4] TTS
+    - seg 1: intro [REUSE existing] (5.64s)
+    - seg 2: main [REUSE existing] (16.40s)
+    - seg 3: main [REUSE existing] (28.88s)
+    - seg 4: main [REUSE existing] (23.00s)
+    - seg 5: outro (67 chars)
+        -> decision_tree_seg_05.wav  (14.52s)
+>>> [2/4] merge audio + SRT
+    merged: decision_tree_merged.wav  (88.44s)
+    srt:    decision_tree.srt  (None entries)
+>>> [3/4] Manim renders
+    - seg 1: intro_v2         target=5.64s
+        -> decision_tree_seg_01_intro_v2.mp4  actual=5.63s  kind=v2
+    - seg 2: bullet_summary   target=16.40s
+        -> decision_tree_seg_02_bullet_summary.mp4  actual=16.37s  kind=v2
+    - seg 3: bullet_summary   target=28.88s
+        -> decision_tree_seg_03_bullet_summary.mp4  actual=28.87s  kind=v2
+    - seg 4: bullet_summary   target=23.00s
+        -> decision_tree_seg_04_bullet_summary.mp4  actual=22.97s  kind=v2
+    - seg 5: bullet_summary   target=14.52s
+        -> decision_tree_seg_05_bullet_summary.mp4  actual=14.50s  kind=v2
+>>> [4/4] composition
+
+[OK] storyboard pipeline 閫氳繃锛?
+   浜х墿: C:\Users\hymac\Desktop\涓存椂python楠ㄦ灦绌块€忔枃浠禱outputs\video\decision_tree_final.mp4
+   澶у皬: 3383.1 KB
+   娈垫暟: 5

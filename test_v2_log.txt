@@ -1,0 +1,15 @@
+﻿>>> 娓叉煋 Manim 鍚勬锛坴2 + legacy 娣峰悎锛?..
+  - seg 1: intro_v2         target=8.50s
+      -> v2_manim_only_seg_01_intro_v2.mp4  actual=8.50s  kind=v2
+  - seg 2: curve_descent    target=22.00s
+      -> v2_manim_only_seg_02_curve_descent.mp4  actual=22.10s  kind=v2
+  - seg 3: outro            target=11.00s
+      -> v2_manim_only_seg_03_outro.mp4  actual=11.00s  kind=legacy
+
+>>> ffmpeg concat 鎷兼帴涓夋鐢婚潰锛堜笉鍔犻煶棰?/ 涓嶅姞瀛楀箷锛?..
+
+[OK] v2 Manim-only pipeline 閫氳繃锛?
+   浜х墿: C:\Users\hymac\Desktop\涓存椂python楠ㄦ灦绌块€忔枃浠禱outputs\video\v2_manim_only_concat.mp4
+   澶у皬: 424.2 KB
+   鎬绘椂闀? 41.60s
+   娈垫暟: 3

@@ -1,0 +1,23 @@
+﻿>>> [1/4] 鐢熸垚 TTS 鏃佺櫧...
+    - seg 1: intro  (36 瀛?
+        -> v2_pipeline_seg_01.wav  (6.44s)
+    - seg 2: main  (99 瀛?
+        -> v2_pipeline_seg_02.wav  (18.92s)
+    - seg 3: outro  (69 瀛?
+        -> v2_pipeline_seg_03.wav  (13.52s)
+>>> [2/4] 鎷兼帴闊抽 + 鐢熸垚瀛楀箷...
+    merged: v2_pipeline_merged.wav  (38.88s)
+    srt:    v2_pipeline.srt  (None 鏉?
+>>> [3/4] 娓叉煋 Manim 鐢婚潰...
+    - seg 1: intro_v2  (target=6.44s)
+        -> v2_pipeline_seg_01_intro_v2.mp4  (actual=6.43s, kind=v2)
+    - seg 2: curve_descent  (target=18.92s)
+        -> v2_pipeline_seg_02_curve_descent.mp4  (actual=19.03s, kind=v2)
+    - seg 3: outro  (target=13.52s)
+        -> v2_pipeline_seg_03_outro.mp4  (actual=13.50s, kind=legacy)
+>>> [4/4] 鍚堟垚鏈€缁堣棰?..
+
+[OK] v2 pipeline 绔埌绔€氳繃锛?
+   浜х墿: C:\Users\hymac\Desktop\涓存椂python楠ㄦ灦绌块€忔枃浠禱outputs\video\v2_pipeline_final.mp4
+   澶у皬: 1366.6 KB
+   鐗囨鏁? 3

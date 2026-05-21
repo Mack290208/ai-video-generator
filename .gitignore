@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Virtual environment
+.venv_manim/
+.venv/
+venv/
+
+# Environment secrets
+.env
+
+# Generated outputs (too large for git)
+media/
+outputs/
+
+# Logs
+*.log
+*.err
+*.out
+_inspect_*.py
+_patch_align*.py
+_anc.*
+_insp.*
+
+# Large binaries
+cloudflared.exe
+*.exe
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store

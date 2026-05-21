@@ -1,0 +1,62 @@
+﻿============================================================
+[1] 鑷姩鍙戠幇鐨勬ā鏉垮垪琛?
+============================================================
+  - [v2    ] bullet_summary           scene=BulletSummaryScene
+  - [v2    ] curve_descent            scene=CurveDescentScene
+  - [v2    ] intro_v2                 scene=IntroV2Scene
+  - [v2    ] lr_comparison            scene=LrComparisonScene
+  - [legacy] gradient_descent         scene=GradientDescentScene
+  - [legacy] intro                    scene=IntroScene
+  - [legacy] outro                    scene=OutroScene
+
+============================================================
+[2] bullet_summary 娓叉煋
+============================================================
+  [OK] bullet_summary_smoke.mp4  size=138912 bytes
+
+============================================================
+[3] lr_comparison schema
+============================================================
+{
+  "title": {
+    "type": "str",
+    "required": true
+  },
+  "func_label": {
+    "type": "str",
+    "required": true
+  },
+  "func_kind": {
+    "type": "str",
+    "required": false,
+    "default": "quadratic_centered_at_2",
+    "allowed": [
+      "quadratic_centered_at_2",
+      "quadratic_centered_at_0"
+    ]
+  },
+  "x_min": {
+    "type": "float",
+    "required": false,
+    "default": -3.0
+  },
+  "x_max": {
+    "type": "float",
+    "required": false,
+    "default": 5.0
+  },
+  "y_min": {
+    "type": "float",
+    "required": false,
+    "default": 0.0
+  },
+  "y_max": {
+    "type": "float",
+    " ...
+
+============================================================
+[4] lr_comparison 娓叉煋锛埼?0.05 vs 伪=0.7锛?
+============================================================
+  [OK] lr_comparison_smoke.mp4  size=222130 bytes
+
+[DONE] 绗笁闃舵涓や釜鏂版ā鏉块獙璇侀€氳繃锛?
