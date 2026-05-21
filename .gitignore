@@ -22,6 +22,7 @@ outputs/
 *.log
 *.err
 *.out
+*_log.txt
 _inspect_*.py
 _patch_align*.py
 _anc.*
