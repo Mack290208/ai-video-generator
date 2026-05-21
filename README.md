@@ -13,7 +13,7 @@
 ## 技术栈
 
 - **动画引擎:** Manim 0.20.1
-- **TTS:** GPT-SoVITS（神里绫华 e10 音色权重）
+- **TTS:** GPT-SoVITS
 - **字幕:** WhisperX
 - **后端:** FastAPI
 - **LLM:** OpenAI-compatible API
