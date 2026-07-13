@@ -94,10 +94,10 @@ class GPTSoVITSTTSService:
 
         payload: dict[str, Any] = {
             "text": text.strip(),
-            "text_lang": (text_lang or self.config.text_lang).lower(),
-            "ref_audio_path": str(ref_audio),
+            "text_language": (text_lang or self.config.text_lang).lower(),
+            "refer_wav_path": str(ref_audio),
             "prompt_text": prompt_t,
-            "prompt_lang": (prompt_lang or self.config.prompt_lang).lower(),
+            "prompt_language": (prompt_lang or self.config.prompt_lang).lower(),
             "text_split_method": text_split_method or self.config.text_split_method,
             "batch_size": self.config.batch_size,
             "media_type": self.config.media_type,
@@ -155,14 +155,14 @@ class GPTSoVITSTTSService:
                 "base_url": self.config.base_url,
                 "ref_audio": str(ref_audio),
                 "prompt_text": prompt_t,
-                "text_lang": payload["text_lang"],
+                "text_lang": payload["text_language"],
                 "speed_factor": payload["speed_factor"],
                 "bytes": len(audio_bytes),
             }
         }
 
     def _call_tts(self, payload: dict[str, Any]) -> bytes:
-        url = f"{self.config.base_url}/tts"
+        url = f"{self.config.base_url}/"
         headers = {"Content-Type": "application/json; charset=utf-8"}
         resp = requests.post(
             url,

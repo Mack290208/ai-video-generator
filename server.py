@@ -1,21 +1,24 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from typing import Any
 from pathlib import Path
+import os
 import uuid
 import json
-import time
-import wave
-import contextlib
 import uvicorn
 from dotenv import load_dotenv
 
-from services.tts_service import GPTSoVITSTTSService, TTSConfig
-from services.subtitle_service import write_srt_file
-from services.video_service import render_placeholder_video
+from storyboard_pipeline import run_pipeline
+from services.tts_service import TTSConfig
+from services.manim_service import list_templates, dump_template_catalog
+from llm_storyboard_service import generate_storyboard_with_llm, TEMPLATE_CATALOG, _get_llm_caller
+from llm_codegen_service import generate_manim_code, execute_manim_code
+from llm_chat_service import chat_with_ai, generate_storyboard_from_chat
 
 BASE_DIR = Path(__file__).resolve().parent
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env", override=True)
 OUTPUT_DIR = BASE_DIR / "outputs"
 AUDIO_DIR = OUTPUT_DIR / "audio"
 SUBTITLE_DIR = OUTPUT_DIR / "subtitles"
@@ -24,7 +27,15 @@ AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 SUBTITLE_DIR.mkdir(parents=True, exist_ok=True)
 VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 
-app = FastAPI(title="ML Teaching Video Generator - TTS v1")
+app = FastAPI(title="ML Teaching Video Generator")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class GenerateVideoRequest(BaseModel):
@@ -41,7 +52,7 @@ def root():
     return {
         "ok": True,
         "service": "ml_teaching_video_generator",
-        "version": "tts-v1"
+        "version": "v3-pipeline"
     }
 
 
@@ -49,241 +60,197 @@ def root():
 def health():
     cfg = TTSConfig.from_env()
     return {
-        "ok": True,
+        "status": "ok",
         "tts_provider": cfg.provider,
         "tts_base_url": cfg.base_url,
-        "default_ref_audio": cfg.ref_audio_path,
-        "default_prompt_text": cfg.prompt_text,
-        "audio_output_dir": str(AUDIO_DIR)
     }
+
+
+@app.get("/templates")
+def get_templates():
+    """返回所有可用 Manim 模板。"""
+    catalog = dump_template_catalog()
+    return {"templates": catalog.get("templates", [])}
 
 
 @app.post("/generate-video")
+@app.post("/tts/pipeline")
 def generate_video(payload: GenerateVideoRequest):
-    task = normalize_request(payload)
-    task_id = task.get("request_id") or str(uuid.uuid4())
-    segments = task.get("segments", [])
-
-    if not segments:
-        raise HTTPException(status_code=400, detail="segments 不能为空")
-
-    tts_config = TTSConfig.from_env()
-    tts_service = GPTSoVITSTTSService(tts_config)
-    audio_results = []
-    tts_errors = []
-
-    # 全局默认参考音频/文本（task 级别可覆盖 env）
-    global_ref_audio = task.get("ref_audio_path") or tts_config.ref_audio_path
-    global_prompt_text = task.get("prompt_text") if task.get("prompt_text") is not None else tts_config.prompt_text
-
-    for index, segment in enumerate(segments, start=1):
-        narration = extract_narration_text(segment)
-        if not narration:
-            continue
-
-        audio_filename = f"{task_id}_seg_{index:02d}.wav"
-        audio_path = AUDIO_DIR / audio_filename
-
-        try:
-            result = tts_service.synthesize_to_file(
-                text=narration,
-                output_path=audio_path,
-                speaker=segment.get("speaker") or task.get("speaker"),
-                speed=segment.get("speed") or task.get("speed"),
-                ref_audio_path=segment.get("ref_audio_path") or global_ref_audio,
-                prompt_text=segment.get("prompt_text") if segment.get("prompt_text") is not None else global_prompt_text,
-                prompt_lang=segment.get("prompt_lang"),
-                text_lang=segment.get("text_lang"),
-                text_split_method=segment.get("text_split_method") or task.get("text_split_method"),
-            )
-        except Exception as e:
-            tts_errors.append({"segment_index": index, "error": str(e)})
-            continue
-
-        audio_results.append({
-            "segment_index": index,
-            "segment_title": segment.get("title") or segment.get("subtitle") or f"segment_{index}",
-            "narration_text": narration,
-            "audio_path": str(audio_path),
-            "audio_file": audio_filename,
-            "audio_duration_seconds": result.get("duration_seconds"),
-            "tts_meta": result.get("meta", {})
-        })
-
-    status = "tts_completed" if not tts_errors else ("tts_partial" if audio_results else "tts_failed")
-
-    # 拼接所有成功的段落为完整音频（只在全部成功时拼，缺段拼了没意义）
-    merged_audio = None
-    if audio_results and not tts_errors:
-        try:
-            merged_filename = f"{task_id}_merged.wav"
-            merged_path = AUDIO_DIR / merged_filename
-            segment_paths = [item["audio_path"] for item in audio_results]
-            total_duration = concat_wav_files(segment_paths, merged_path)
-            merged_audio = {
-                "audio_path": str(merged_path),
-                "audio_file": merged_filename,
-                "duration_seconds": total_duration,
-                "segment_count": len(segment_paths),
-            }
-        except Exception as e:
-            merged_audio = {"error": f"拼接失败: {e}"}
-
-    # 生成字幕 SRT（有成功段就生成，时间戳按顺序累加）
-    subtitle_info = None
-    if audio_results:
-        try:
-            srt_path = SUBTITLE_DIR / f"{task_id}.srt"
-            subtitle_info = write_srt_file(audio_results, srt_path)
-        except Exception as e:
-            subtitle_info = {"error": f"字幕生成失败: {e}"}
-
-    return {
-        "task_id": task_id,
-        "status": status,
-        "title": task.get("title") or "未命名机器学习教学视频",
-        "topic": task.get("topic") or "未指定主题",
-        "segments_received": len(segments),
-        "segments_tts_generated": len(audio_results),
-        "audio_results": audio_results,
-        "merged_audio": merged_audio,
-        "subtitle": subtitle_info,
-        "tts_errors": tts_errors,
-        "tts_backend": {"provider": tts_config.provider, "base_url": tts_config.base_url},
-        "note": "已完成脚本→旁白生成→拼接→字幕，下一步可以接画面/合成"
-    }
-
-
-class RenderVideoRequest(BaseModel):
-    audio_path: str
-    subtitle_path: str
-    output_filename: str | None = None
-    width: int | None = 1280
-    height: int | None = 720
-    fps: int | None = 30
-    bg_color: str | None = "black"
-    font_size: int | None = 28
-    margin_v: int | None = 60
-
-
-@app.post("/render-video")
-def render_video(payload: RenderVideoRequest):
-    audio_path = Path(payload.audio_path)
-    srt_path = Path(payload.subtitle_path)
-    if not audio_path.exists():
-        raise HTTPException(status_code=400, detail=f"音频文件不存在: {audio_path}")
-    if not srt_path.exists():
-        raise HTTPException(status_code=400, detail=f"字幕文件不存在: {srt_path}")
-
-    filename = payload.output_filename or f"render_{int(time.time())}.mp4"
-    if not filename.lower().endswith(".mp4"):
-        filename += ".mp4"
-    output_path = VIDEO_DIR / filename
-
-    try:
-        result = render_placeholder_video(
-            audio_path=audio_path,
-            srt_path=srt_path,
-            output_path=output_path,
-            width=payload.width or 1280,
-            height=payload.height or 720,
-            fps=payload.fps or 30,
-            bg_color=payload.bg_color or "black",
-            font_size=payload.font_size or 28,
-            margin_v=payload.margin_v or 60,
-        )
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-    return {
-        "ok": True,
-        "video": result,
-    }
-
-
-@app.post("/debug/parse-task")
-def debug_parse_task(payload: GenerateVideoRequest):
-    task = normalize_request(payload)
-    return {
-        "ok": True,
-        "parsed_task": task
-    }
-
-
-def normalize_request(payload: GenerateVideoRequest) -> dict[str, Any]:
+    """完整的视频生成流程：TTS + WhisperX对齐 + Manim + 合成"""
+    # 解析请求
     if payload.video_task:
         try:
             task = json.loads(payload.video_task)
             if not isinstance(task, dict):
-                raise HTTPException(status_code=400, detail="video_task 必须是 JSON object 字符串")
-            if not task.get("request_id"):
-                task["request_id"] = payload.request_id or str(uuid.uuid4())
-            return task
+                raise HTTPException(status_code=400, detail="video_task 必须是 JSON object")
         except json.JSONDecodeError as e:
             raise HTTPException(status_code=400, detail=f"video_task 不是合法 JSON: {e}")
+    else:
+        task = {
+            "video_title": payload.title or "未命名视频",
+            "segments": payload.segments,
+        }
 
+    segments = task.get("segments", [])
+    if not segments:
+        raise HTTPException(status_code=400, detail="segments 不能为空")
+
+    task_id = task.get("request_id") or payload.request_id or str(uuid.uuid4())
+
+    # 调用完整 pipeline
+    result = run_pipeline(storyboard=task, task_id=task_id, use_whisper=True)
+
+    if result.get("error"):
+        raise HTTPException(status_code=500, detail=result["error"])
+
+    return result
+
+
+class ChatRequest(BaseModel):
+    message: str
+    history: list[dict[str, str]] = Field(default_factory=list)
+    provider: str | None = None  # 可选: "mimo", "deepseek", "openai"
+
+
+@app.post("/chat/generate-storyboard")
+def chat_generate_storyboard(payload: ChatRequest):
+    """AI 对话 - 支持聊天讨论和 storyboard 生成"""
+    if not payload.message:
+        raise HTTPException(status_code=400, detail="message 不能为空")
+
+    # 调用聊天服务
+    result = chat_with_ai(
+        message=payload.message,
+        history=payload.history,
+        provider=payload.provider
+    )
+    
+    # 如果需要生成 storyboard
+    if result.get("should_generate") and result.get("topic"):
+        topic = result["topic"]
+        storyboard = generate_storyboard_from_chat(
+            topic=topic,
+            history=payload.history,
+            provider=payload.provider
+        )
+        
+        if storyboard.get("error"):
+            return {
+                "ok": False,
+                "message": result["response"] + f"\n\n生成 storyboard 时出错：{storyboard['error']}",
+                "should_generate": True,
+                "topic": topic
+            }
+        
+        return {
+            "ok": True,
+            "storyboard": storyboard,
+            "message": result["response"] + f"\n\n已为「{storyboard.get('video_title', topic)}」生成 storyboard，共 {len(storyboard.get('segments', []))} 个段落",
+            "should_generate": True,
+            "topic": topic
+        }
+    
+    # 普通对话
     return {
-        "request_id": payload.request_id or str(uuid.uuid4()),
-        "topic": payload.topic,
-        "title": payload.title,
-        "global_style": payload.global_style,
-        "segments": payload.segments,
+        "ok": True,
+        "message": result["response"],
+        "should_generate": False,
+        "topic": None
     }
 
 
-def concat_wav_files(input_paths: list[str], output_path: Path) -> float | None:
-    """
-    把多个 wav 按顺序拼接成一个，返回总时长（秒）。
-    要求：所有 wav 的声道数/采样率/采样宽度一致（GPT-SoVITS 输出满足）。
-    用标准库 wave，不依赖 ffmpeg。
-    """
-    if not input_paths:
-        return None
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # 用第一个文件的参数作为基准
-    with contextlib.closing(wave.open(input_paths[0], "rb")) as first:
-        params = first.getparams()
-        nchannels = first.getnchannels()
-        sampwidth = first.getsampwidth()
-        framerate = first.getframerate()
-
-    total_frames = 0
-    with contextlib.closing(wave.open(str(output_path), "wb")) as out:
-        out.setparams(params)
-        for path in input_paths:
-            with contextlib.closing(wave.open(path, "rb")) as w:
-                if (w.getnchannels() != nchannels
-                        or w.getsampwidth() != sampwidth
-                        or w.getframerate() != framerate):
-                    raise RuntimeError(
-                        f"wav 参数不一致: {path} "
-                        f"ch={w.getnchannels()} rate={w.getframerate()} sw={w.getsampwidth()}"
-                    )
-                frames = w.readframes(w.getnframes())
-                out.writeframes(frames)
-                total_frames += w.getnframes()
-
-    if framerate > 0:
-        return round(total_frames / float(framerate), 3)
-    return None
+@app.get("/llm/providers")
+def get_llm_providers():
+    """返回可用的 LLM 提供商列表"""
+    providers = []
+    if os.getenv("MIMO_API_KEY") and os.getenv("MIMO_API_KEY") != "your_mimo_api_key_here":
+        providers.append({"id": "mimo", "name": "MiMo (小米大模型)", "model": os.getenv("MIMO_MODEL", "mimo-v2-pro")})
+    if os.getenv("DEEPSEEK_API_KEY") and os.getenv("DEEPSEEK_API_KEY") != "your_deepseek_api_key_here":
+        providers.append({"id": "deepseek", "name": "DeepSeek", "model": "deepseek-chat"})
+    if os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY"):
+        providers.append({"id": "openai", "name": "OpenAI 兼容", "model": os.getenv("LLM_MODEL", "deepseek-ai/DeepSeek-V3")})
+    return {"providers": providers}
 
 
-def extract_narration_text(segment: dict[str, Any]) -> str:
-    candidates = [
-        segment.get("narration"),
-        segment.get("voiceover"),
-        segment.get("script"),
-        segment.get("text"),
-        segment.get("content"),
-    ]
-    for item in candidates:
-        if isinstance(item, str) and item.strip():
-            return item.strip()
-    return ""
+@app.get("/templates/catalog")
+def get_template_catalog():
+    """返回模板目录（供 LLM 参考）"""
+    return TEMPLATE_CATALOG
+
+
+class CodeGenRequest(BaseModel):
+    title: str
+    requirements: str
+    provider: str | None = None
+
+
+@app.post("/codegen/generate")
+def codegen_generate(payload: CodeGenRequest):
+    """方案C: LLM 生成 Manim 代码"""
+    from llm_storyboard_service import _get_llm_caller
+    
+    llm_func = _get_llm_caller(payload.provider)
+    
+    result = generate_manim_code(
+        title=payload.title,
+        requirements=payload.requirements,
+        llm_func=llm_func
+    )
+    
+    if not result["success"]:
+        raise HTTPException(status_code=500, detail=result["error"])
+    
+    return {
+        "ok": True,
+        "code": result["code"],
+        "message": "代码生成成功"
+    }
+
+
+@app.post("/codegen/render")
+def codegen_render(payload: CodeGenRequest):
+    """方案C: LLM 生成代码并渲染视频"""
+    from llm_storyboard_service import _get_llm_caller
+    
+    llm_func = _get_llm_caller(payload.provider)
+    
+    # 生成代码
+    code_result = generate_manim_code(
+        title=payload.title,
+        requirements=payload.requirements,
+        llm_func=llm_func
+    )
+    
+    if not code_result["success"]:
+        raise HTTPException(status_code=500, detail=code_result["error"])
+    
+    # 渲染视频
+    render_result = execute_manim_code(
+        code=code_result["code"],
+        quality="medium"
+    )
+    
+    if not render_result["success"]:
+        raise HTTPException(status_code=500, detail=render_result["error"])
+    
+    # 返回视频路径
+    video_path = Path(render_result["video_path"])
+    video_filename = video_path.name
+    
+    return {
+        "ok": True,
+        "code": code_result["code"],
+        "video_filename": video_filename,
+        "message": "代码生成并渲染成功"
+    }
+
+
+# 静态文件
+FRONTEND_DIR = BASE_DIR / "frontend"
+if FRONTEND_DIR.exists():
+    app.mount("/ui", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
+
+app.mount("/outputs", StaticFiles(directory=str(OUTPUT_DIR)), name="outputs")
 
 
 if __name__ == "__main__":

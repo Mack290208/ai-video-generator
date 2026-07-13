@@ -249,7 +249,7 @@ def compose_teaching_video(
             "-c:v", "libx264", "-pix_fmt", "yuv420p",
             "-preset", "veryfast", "-crf", "23",
             "-c:a", "aac", "-b:a", "192k",
-            "-shortest",
+            # 注意：不加 -shortest，因为画面和音频已经对齐到相同时长
             str(output_path),
         ]
 

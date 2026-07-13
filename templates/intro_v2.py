@@ -58,8 +58,9 @@ TEMPLATE_META = {
 
 
 # 居中大标题字号（明显大于普通顶部标题 FS_TITLE=34）
-INTRO_TITLE_SIZE = 64
-INTRO_SUBTITLE_SIZE = 38
+# 2026-06-23: 64→54，修复笔画密集汉字（拟、合等）渲染重叠问题
+INTRO_TITLE_SIZE = 54
+INTRO_SUBTITLE_SIZE = 36
 
 
 class IntroV2Scene(Scene):

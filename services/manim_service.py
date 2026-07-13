@@ -106,6 +106,71 @@ QUALITY_FLAGS = {
 # ============================================================
 # 模板自动发现（v2）
 # ============================================================
+def _extract_metadata_from_source(py_file: Path) -> tuple[dict, dict]:
+    """从模板源文件中提取 PARAM_SCHEMA 和 TEMPLATE_META（不 import 模块）。
+
+    使用 ast 模块解析 Python 文件，安全地提取顶层字典赋值。
+    """
+    import ast
+    
+    schema: dict[str, Any] = {}
+    meta: dict[str, Any] = {}
+    
+    try:
+        source = py_file.read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        if target.id == "PARAM_SCHEMA":
+                            schema = _safe_eval_ast_dict(node.value)
+                        elif target.id == "TEMPLATE_META":
+                            meta = _safe_eval_ast_dict(node.value)
+    except Exception:
+        pass
+    
+    return schema, meta
+
+
+def _safe_eval_ast_dict(node) -> dict:
+    """安全地将 AST 字典节点转为 Python dict（仅支持基本类型）。
+    """
+    import ast
+    
+    if isinstance(node, ast.Dict):
+        result = {}
+        for key, value in zip(node.keys, node.values):
+            if isinstance(key, ast.Constant):
+                k = key.value
+            else:
+                continue
+            result[k] = _safe_eval_ast_value(value)
+        return result
+    return {}
+
+
+def _safe_eval_ast_value(node) -> Any:
+    """安全地将 AST 值节点转为 Python 对象。
+    """
+    import ast
+    
+    if isinstance(node, ast.Constant):
+        return node.value
+    elif isinstance(node, ast.List):
+        return [_safe_eval_ast_value(elt) for elt in node.elts]
+    elif isinstance(node, ast.Tuple):
+        return tuple(_safe_eval_ast_value(elt) for elt in node.elts)
+    elif isinstance(node, ast.Dict):
+        return _safe_eval_ast_dict(node)
+    elif isinstance(node, ast.NameConstant):
+        return node.value
+    elif isinstance(node, ast.Set):
+        return {_safe_eval_ast_value(elt) for elt in node.elts}
+    return None
+
+
 def _discover_v2_templates() -> dict[str, dict[str, Any]]:
     """扫描 templates/ 目录，找出所有合法模板。
 
@@ -155,11 +220,14 @@ def _discover_v2_templates() -> dict[str, dict[str, Any]]:
         except Exception as e:
             # 主进程没装 manim 也能继续——只记录脚本路径，scene 类名留空
             # 后续 render 时由子进程（Manim venv）真正解析
+            # 尝试从源文件中提取 PARAM_SCHEMA 和 TEMPLATE_META
+            schema, meta = _extract_metadata_from_source(py_file)
             discovered[template_id] = {
                 "module": module_name,
                 "script": f"templates/{py_file.name}",
                 "scene": None,
-                "schema": {},
+                "schema": schema,
+                "meta": meta,
                 "kind": "v2",
                 "import_error": str(e),
             }

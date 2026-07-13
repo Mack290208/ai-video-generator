@@ -108,10 +108,10 @@ def _gather_steps() -> list[tuple[str, str]]:
 
 
 # 画面布局常量
-# 4 步水平排列在 x ∈ [-6.0, +6.0]，留出两侧 1.0 边距
+# 4 步水平排列在 x ∈ [-4.5, +4.5]，留出足够边距防止溢出
 CONTENT_Y = 0.0          # 公式中心 y
 CAPTION_OFFSET_Y = 1.1   # caption 在公式上方多少
-ARROW_BUFF = 1.05        # 箭头与公式之间的间距（防挡住公式）
+ARROW_BUFF = 0.85        # 箭头与公式之间的间距
 
 
 class FormulaEvolveScene(Scene):
@@ -158,22 +158,28 @@ class FormulaEvolveScene(Scene):
         play_t(*bar.write_anims(), run_time=1.0)
 
         # ---------- 2. 计算每步的 x 坐标 ----------
-        # 水平区间 [-6.0, +6.0]，n 步均匀分布
+        # 水平区间 [-4.5, +4.5]，n 步均匀分布
         if n == 1:
             xs = [0.0]
         else:
-            x_left = -6.0
-            x_right = +6.0
+            x_left = -4.5
+            x_right = +4.5
             x_step = (x_right - x_left) / (n - 1)
             xs = [x_left + i * x_step for i in range(n)]
 
         # ---------- 3. 预先构造所有公式 + caption mobjects ----------
+        # 计算每步可用宽度（防止 caption 文字溢出重叠）
+        avail_width = (x_right - x_left) / n - 0.3 if n > 1 else 8.0
+
         formula_objs: list[MathTex] = []
         caption_objs: list = []
         for i, (formula, caption) in enumerate(steps):
             x = xs[i]
             f = MathTex(formula, font_size=formula_size, color=WHITE)
             f.move_to([x, CONTENT_Y, 0])
+            # 如果公式太宽，缩放到可用宽度
+            if f.width > avail_width:
+                f.scale_to_fit_width(avail_width)
             formula_objs.append(f)
 
             if caption.strip():
@@ -183,6 +189,9 @@ class FormulaEvolveScene(Scene):
                     font_size=caption_size,
                     color=BLUE,
                 ).move_to([x, CONTENT_Y + CAPTION_OFFSET_Y, 0])
+                # 如果 caption 太宽，自动缩小字号或截断
+                if c.width > avail_width:
+                    c.scale_to_fit_width(avail_width)
                 caption_objs.append(c)
             else:
                 caption_objs.append(None)

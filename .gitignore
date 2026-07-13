@@ -28,6 +28,16 @@ _patch_align*.py
 _anc.*
 _insp.*
 
+# Debug / temp scripts
+_gen_debug.py
+_test_tts.py
+_test_tts2.py
+inspect_alignment.py
+inspect_seg3.py
+
+# Temp directories
+temp/
+
 # Large binaries
 cloudflared.exe
 *.exe

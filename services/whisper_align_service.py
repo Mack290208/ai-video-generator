@@ -1,25 +1,19 @@
 """
 services/whisper_align_service.py
 ---------------------------------
-用 faster-whisper 对每段 TTS 旁白做"反向对齐"：
-  - 输入：wav 文件 + 我们已知的 narration 文本
-  - 输出：word-level (start, end) 时间戳列表
+字幕对齐服务：支持 faster-whisper 和 WhisperX 两种后端。
 
-然后把 narration 按标点切成 cue，**字幕文本永远以 narration 为准**，
-只是把每条 cue 的起点时间锚定到 whisper 找到的真实词时间。
+WhisperX (推荐): wav2vec2 强制对齐，不依赖语音识别准确率，
+                  适合"已知文本+音频"的场景（我们的 TTS 旁白）。
 
-v2 改进（2026-05-16）：
-  - 字幕文本严格 = narration 切的 cue（不再丢字符）
-  - cue.start 用首字符在 word 序列里"窗口匹配"找到，而非按指针推进
-  - 找不到就用上一条 end + 估算位置兜底（whisper 漏字也不会错位）
-  - 最后一条 cue 始终延伸到音频末尾（避免末尾被压缩）
-  - cue.end = next.start，连接式，整段不留空隙
+faster-whisper (legacy): 先识别再对齐，中文可能漏字/错字。
 
-模型选择：默认 small，中文足够准。
+输出：word-level (start, end) 时间戳列表，用于后续切 cue。
 """
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -38,10 +32,144 @@ class WordToken:
 
 
 # ============================================================
-# 1. faster-whisper 转录
+# 1. WhisperX wav2vec2 强制对齐（推荐）
+# ============================================================
+class WhisperXAligner:
+    """WhisperX wav2vec2 forced alignment 包装。延迟加载模型。
+
+    不依赖 Whisper 识别！直接把已知文本强制对齐到音频时间轴。
+    对中文特别有效：每个字都有精确的 start/end 时间戳。
+    """
+
+    # 中文对齐模型（ HuggingFace ）
+    ALIGN_MODEL_ZH = "jonatasgrosman/wav2vec2-large-xlsr-53-chinese-zh-cn"
+
+    def __init__(
+        self,
+        language: str = "zh",
+        device: str = "cpu",
+        model_name: str | None = None,
+        model_dir: str | None = None,
+    ) -> None:
+        self.language = language
+        self.device = device
+        self.model_name = model_name or self._default_model(language)
+        self.model_dir = model_dir
+        self._align_model = None
+        self._align_metadata = None
+
+    @staticmethod
+    def _default_model(language: str) -> str:
+        """根据语言返回默认对齐模型名。"""
+        import whisperx.alignment as _wa
+        if language in _wa.DEFAULT_ALIGN_MODELS_TORCH:
+            return _wa.DEFAULT_ALIGN_MODELS_TORCH[language]
+        if language in _wa.DEFAULT_ALIGN_MODELS_HF:
+            return _wa.DEFAULT_ALIGN_MODELS_HF[language]
+        raise ValueError(f"No default align model for language: {language}")
+
+    def _ensure_model(self) -> None:
+        if self._align_model is not None:
+            return
+        import whisperx
+        print(f"    [whisperx] loading align model: {self.model_name}")
+        self._align_model, self._align_metadata = whisperx.load_align_model(
+            language_code=self.language,
+            device=self.device,
+            model_name=self.model_name,
+            model_dir=self.model_dir,
+        )
+        print(f"    [whisperx] align model loaded (type={self._align_metadata.get('type', '?')})")
+
+    def align_text_to_audio(
+        self,
+        wav_path: str | Path,
+        text: str,
+    ) -> list[WordToken]:
+        """把已知文本强制对齐到音频，返回字符级时间戳。
+
+        对中文：每个字 = 一个 WordToken（因为中文没有空格分词）。
+        """
+        import whisperx
+
+        self._ensure_model()
+        wav_path = str(Path(wav_path))
+
+        # 加载音频
+        audio = whisperx.load_audio(wav_path)
+        audio_duration = len(audio) / whisperx.audio.SAMPLE_RATE
+
+        # 构造一个 segment：整个音频 = 一段已知文本
+        transcript = [{
+            "start": 0.0,
+            "end": audio_duration,
+            "text": text,
+        }]
+
+        # 强制对齐
+        result = whisperx.align(
+            transcript=transcript,
+            model=self._align_model,
+            align_model_metadata=self._align_metadata,
+            audio=audio,
+            device=self.device,
+            return_char_alignments=True,
+        )
+
+        # 提取字符级时间戳
+        words: list[WordToken] = []
+        for seg in result.get("segments", []):
+            # 优先用 chars（每个中文字符的精确时间）
+            chars = seg.get("chars", [])
+            if chars:
+                for ch_info in chars:
+                    ch = ch_info.get("char", "").strip()
+                    if not ch:
+                        continue
+                    start = ch_info.get("start")
+                    end = ch_info.get("end")
+                    if start is None or end is None:
+                        continue
+                    words.append(WordToken(text=ch, start=float(start), end=float(end)))
+            else:
+                # fallback: 用 words（对中文也是逐字的）
+                for w in seg.get("words", []):
+                    wt = (w.get("word") or "").strip()
+                    if not wt:
+                        continue
+                    start = w.get("start")
+                    end = w.get("end")
+                    if start is None or end is None:
+                        continue
+                    words.append(WordToken(text=wt, start=float(start), end=float(end)))
+
+        return words
+
+    # 兼容旧接口：transcribe_words 调用 align_text_to_audio
+    def transcribe_words(
+        self,
+        wav_path: str | Path,
+        language: str = "zh",
+        initial_prompt: str | None = None,
+    ) -> list[WordToken]:
+        """兼容 WhisperAligner 接口。
+
+        注意：WhisperXAligner 需要已知文本，但旧接口只传 audio。
+        这里用 initial_prompt 作为文本（如果提供的话），否则返回空列表。
+        """
+        if not initial_prompt:
+            return []
+        return self.align_text_to_audio(wav_path, initial_prompt)
+
+
+# ============================================================
+# 1b. faster-whisper 转录（legacy 备用）
 # ============================================================
 class WhisperAligner:
-    """faster-whisper 包装。延迟加载模型。"""
+    """faster-whisper 包装。延迟加载模型。
+
+    ⚠️ legacy：中文会漏字/错字，推荐用 WhisperXAligner 替代。
+    """
 
     def __init__(
         self,
@@ -110,7 +238,6 @@ def _normalize_for_match(s: str) -> str:
     return _trad_to_simp(cleaned)
 
 
-
 try:
     from opencc import OpenCC as _OpenCC
     _t2s = _OpenCC("t2s")
@@ -127,6 +254,7 @@ def _trad_to_simp(s: str) -> str:
         return _trad_to_simp_impl(s)
     except Exception:
         return s
+
 
 def split_to_cues(
     text: str, min_chars: int = 8, max_chars: int = 22
@@ -199,7 +327,7 @@ def align_cues_to_words(
     """
     把 narration 切成 cue，用 words 时间戳锚定起点。
 
-    新策略 v3 (2026-05-16 night)：
+    策略：
       第一遍：尝试在 word 序列里给每个 cue 锚定首字符 -> aligned cues
       第二遍：未锚定的 cue 在两个相邻 anchor 之间按字符比例插值
       第三遍：cue.end = next.start；最后一条 → seg_end
@@ -211,11 +339,16 @@ def align_cues_to_words(
     if not cues_text:
         return []
 
-    seg_end = (
-        seg_offset + float(seg_duration)
-        if seg_duration is not None
-        else seg_offset + (words[-1].end if words else sum(len(c) for c in cues_text) * 0.18)
-    )
+    # 关键修复：用实际最后一个对齐字符的时间戳作为 segment 结束时间
+    # 而不是用完整的音频时长（因为 WhisperX 可能对不齐特殊符号）
+    if words:
+        actual_speech_end = words[-1].end + seg_offset
+    else:
+        actual_speech_end = seg_offset + float(seg_duration) if seg_duration is not None else seg_offset + sum(len(c) for c in cues_text) * 0.18
+    
+    # seg_end 取实际语音结束时间和声明的 seg_duration 的较小值
+    declared_end = seg_offset + float(seg_duration) if seg_duration is not None else actual_speech_end
+    seg_end = min(actual_speech_end, declared_end)
     seg_len = max(0.1, seg_end - seg_offset)
 
     cue_norms = [_normalize_for_match(c) for c in cues_text]
@@ -346,7 +479,7 @@ def align_cues_to_words(
 # ============================================================
 def align_segments(
     audio_results: list[dict[str, Any]],
-    aligner: WhisperAligner,
+    aligner: WhisperAligner | WhisperXAligner,
     language: str = "zh",
     verbose: bool = True,
 ) -> list[dict[str, Any]]:
@@ -371,16 +504,20 @@ def align_segments(
             print(f"    - seg {i}: aligning {Path(wav_path).name} ({duration:.2f}s)")
 
         try:
-            words = aligner.transcribe_words(
-                wav_path,
-                language=language,
-                initial_prompt=text_for_subtitle[:200] if text_for_subtitle else None,
-            )
+            # 优先用 WhisperXAligner 的专用接口
+            if isinstance(aligner, WhisperXAligner):
+                words = aligner.align_text_to_audio(wav_path, text_for_subtitle)
+            else:
+                words = aligner.transcribe_words(
+                    wav_path,
+                    language=language,
+                    initial_prompt=text_for_subtitle[:200] if text_for_subtitle else None,
+                )
             if verbose:
-                print(f"        -> whisper got {len(words)} words")
+                print(f"        -> got {len(words)} chars/words")
         except Exception as e:
             if verbose:
-                print(f"        !! whisper failed: {e}; fallback to char-ratio")
+                print(f"        !! align failed: {e}; fallback to char-ratio")
             words = []
 
         cues = align_cues_to_words(

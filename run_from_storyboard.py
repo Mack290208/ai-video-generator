@@ -19,6 +19,7 @@ run_from_storyboard.py
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -33,7 +34,7 @@ from services.duration_estimator import (
     estimate_storyboard_seconds,
 )
 from services.whisper_align_service import (
-    WhisperAligner,
+    WhisperXAligner,
     align_segments,
     write_aligned_srt,
 )
@@ -152,9 +153,13 @@ def main() -> int:
 
     srt_path = SUBTITLE_DIR / f"{task_id}.srt"
     if use_whisper:
-        print("    [align] whisper word-level alignment ...")
+        print("    [align] WhisperX wav2vec2 forced alignment ...")
         try:
-            aligner = WhisperAligner(model_size="small", device="cpu", compute_type="int8")
+            # 设置 HuggingFace 镜像（中国网络）
+            os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+            os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+
+            aligner = WhisperXAligner(language="zh", device="cpu")
             cues = align_segments(audio_results, aligner, language="zh", verbose=True)
             info = write_aligned_srt(cues, srt_path)
             print(
@@ -162,7 +167,7 @@ def main() -> int:
                 f"aligned={info['aligned_cues']}, fallback={info['fallback_cues']})"
             )
         except Exception as e:
-            print(f"    !! whisper align failed: {e}")
+            print(f"    !! WhisperX align failed: {e}")
             print(f"    -> fallback to char-ratio SRT")
             info = write_srt_file(audio_results, srt_path)
             print(f"    srt:    {srt_path.name}  ({info.get('entry_count', info.get('cue_count'))} entries) [fallback]")
