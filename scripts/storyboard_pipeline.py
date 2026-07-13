@@ -1,7 +1,7 @@
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-1|# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 storyboard_pipeline.py - 完整的 storyboard 视频生成流程
 封装 run_from_storyboard.py 的逻辑，供 server.py 调用
