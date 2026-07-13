@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>教学视频生成器 - UI 参考设计</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f5f7fa; color: #1a1a2e; line-height: 1.6; }
+
+/* ===== Design 1: 清新教学风 ===== */
+.mockup-section { padding: 32px; margin: 24px auto; max-width: 1100px; }
+.mockup-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; color: #1a1a2e; }
+.mockup-desc { font-size: 14px; color: #666; margin-bottom: 24px; }
+
+/* Header */
+.edu-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px 32px; border-radius: 16px 16px 0 0; display: flex; align-items: center; justify-content: space-between; }
+.edu-header h1 { color: white; font-size: 22px; font-weight: 600; }
+.edu-header .steps { display: flex; gap: 8px; }
+.edu-header .step { background: rgba(255,255,255,0.2); color: white; padding: 6px 16px; border-radius: 20px; font-size: 13px; }
+.edu-header .step.active { background: white; color: #667eea; font-weight: 600; }
+
+/* Main Layout */
+.edu-body { display: flex; background: white; border-radius: 0 0 16px 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+.edu-sidebar { width: 220px; background: #fafbfc; border-right: 1px solid #eee; padding: 20px 16px; }
+.edu-sidebar .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; margin-bottom: 4px; font-size: 14px; color: #666; cursor: pointer; transition: all 0.2s; }
+.edu-sidebar .nav-item:hover { background: #f0f1f5; }
+.edu-sidebar .nav-item.active { background: #eef0ff; color: #667eea; font-weight: 600; }
+.edu-sidebar .nav-item .icon { width: 20px; text-align: center; }
+
+.edu-main { flex: 1; padding: 24px 28px; }
+.edu-main h2 { font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #1a1a2e; }
+
+/* Cards */
+.topic-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+.topic-card { background: #f8f9fd; border: 2px solid #eee; border-radius: 12px; padding: 18px; cursor: pointer; transition: all 0.2s; }
+.topic-card:hover { border-color: #667eea; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102,126,234,0.15); }
+.topic-card .emoji { font-size: 28px; margin-bottom: 8px; }
+.topic-card .name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.topic-card .desc { font-size: 12px; color: #999; }
+
+/* Script Editor */
+.script-area { background: #f8f9fd; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #eee; }
+.script-area label { font-size: 13px; font-weight: 600; color: #555; display: block; margin-bottom: 8px; }
+.script-area textarea { width: 100%; height: 100px; border: 1px solid #ddd; border-radius: 8px; padding: 12px; font-size: 14px; font-family: inherit; resize: vertical; background: white; }
+.script-area textarea:focus { outline: none; border-color: #667eea; }
+
+/* Preview */
+.preview-panel { width: 300px; background: #fafbfc; border-left: 1px solid #eee; padding: 20px; display: flex; flex-direction: column; }
+.preview-box { background: #000; border-radius: 12px; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+.preview-box span { color: #666; font-size: 13px; }
+.preview-info { background: #f0f1f5; border-radius: 10px; padding: 14px; }
+.preview-info .row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; color: #666; }
+.preview-info .row strong { color: #1a1a2e; }
+
+/* Generate Button */
+.gen-btn { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.gen-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102,126,234,0.35); }
+
+/* ===== Design 2: 简约白 ===== */
+.d2-header { background: white; padding: 18px 28px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; border-radius: 16px 16px 0 0; }
+.d2-header h1 { font-size: 20px; font-weight: 700; background: linear-gradient(135deg, #ff6b6b, #ffa07a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.d2-body { background: white; padding: 24px 28px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.06); }
+.d2-steps { display: flex; gap: 0; margin-bottom: 28px; }
+.d2-step { flex: 1; text-align: center; padding: 14px; position: relative; }
+.d2-step::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: #eee; border-radius: 2px; }
+.d2-step.done::after { background: #4ade80; }
+.d2-step.active::after { background: #ff6b6b; }
+.d2-step .num { width: 32px; height: 32px; border-radius: 50%; background: #f0f0f0; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+.d2-step.done .num { background: #dcfce7; color: #16a34a; }
+.d2-step.active .num { background: #fff0f0; color: #ff6b6b; }
+.d2-step .label { font-size: 13px; color: #999; }
+.d2-step.active .label { color: #ff6b6b; font-weight: 600; }
+
+.d2-content { display: flex; gap: 24px; }
+.d2-editor { flex: 1; }
+.d2-card { background: #fafbfc; border: 1px solid #f0f0f0; border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+.d2-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.d2-input { width: 100%; padding: 10px 14px; border: 1px solid #e8e8e8; border-radius: 8px; font-size: 14px; background: white; }
+.d2-input:focus { outline: none; border-color: #ff6b6b; }
+
+.d2-sidebar { width: 280px; }
+.d2-tip { background: linear-gradient(135deg, #fff5f5, #fff0f0); border: 1px solid #ffe0e0; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+.d2-tip h4 { font-size: 14px; color: #ff6b6b; margin-bottom: 6px; }
+.d2-tip p { font-size: 13px; color: #999; }
+
+.d2-templates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.d2-tpl { background: #f8f9fd; border: 1px solid #eee; border-radius: 10px; padding: 14px; text-align: center; cursor: pointer; transition: all 0.2s; }
+.d2-tpl:hover { border-color: #ff6b6b; background: #fff8f8; }
+.d2-tpl .icon { font-size: 24px; margin-bottom: 4px; }
+.d2-tpl .name { font-size: 12px; font-weight: 600; }
+
+/* ===== Design 3: 卡片向导式 ===== */
+.d3 { background: linear-gradient(180deg, #e0e7ff 0%, #f5f7fa 40%); border-radius: 16px; padding: 32px; box-shadow: 0 4px 24px rgba(0,0,0,0.06); }
+.d3-header { text-align: center; margin-bottom: 28px; }
+.d3-header h1 { font-size: 26px; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
+.d3-header p { color: #666; font-size: 14px; }
+.d3-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+.d3-card { background: white; border-radius: 14px; padding: 24px; text-align: center; box-shadow: 0 2px 12px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.2s; border: 2px solid transparent; }
+.d3-card:hover { border-color: #818cf8; transform: translateY(-3px); box-shadow: 0 8px 24px rgba(129,140,248,0.2); }
+.d3-card .icon { font-size: 40px; margin-bottom: 12px; }
+.d3-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.d3-card p { font-size: 13px; color: #999; }
+
+.d3-bottom { display: flex; justify-content: center; gap: 12px; }
+.d3-btn { padding: 12px 28px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; }
+.d3-btn.primary { background: linear-gradient(135deg, #818cf8, #6366f1); color: white; }
+.d3-btn.primary:hover { box-shadow: 0 4px 16px rgba(99,102,241,0.3); }
+.d3-btn.secondary { background: white; color: #666; border: 1px solid #ddd; }
+
+/* Separator */
+.sep { text-align: center; padding: 20px; color: #ccc; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<!-- ===== 方案一：清新教学风 ===== -->
+<div class="mockup-section">
+  <div class="mockup-title">方案一：清新教学风 🎓</div>
+  <div class="mockup-desc">参考产品：Canva 教育版、Notion。左侧导航 + 右侧预览，步骤式引导，教师友好。</div>
+
+  <div class="edu-header">
+    <h1>🎬 AI 助教视频工坊</h1>
+    <div class="steps">
+      <div class="step active">① 选择主题</div>
+      <div class="step">② 编辑脚本</div>
+      <div class="step">③ 生成视频</div>
+    </div>
+  </div>
+  <div class="edu-body">
+    <div class="edu-sidebar">
+      <div class="nav-item active"><span class="icon">📝</span> 创建视频</div>
+      <div class="nav-item"><span class="icon">📚</span> 我的课程</div>
+      <div class="nav-item"><span class="icon">🎨</span> 模板库</div>
+      <div class="nav-item"><span class="icon">📁</span> 素材管理</div>
+      <div class="nav-item"><span class="icon">⚙️</span> 设置</div>
+    </div>
+    <div class="edu-main">
+      <h2>选择课程主题</h2>
+      <div class="topic-cards">
+        <div class="topic-card"><div class="emoji">🌳</div><div class="name">决策树</div><div class="desc">分类算法基础</div></div>
+        <div class="topic-card"><div class="emoji">📉</div><div class="name">梯度下降</div><div class="desc">优化算法入门</div></div>
+        <div class="topic-card"><div class="emoji">🧠</div><div class="name">神经网络</div><div class="desc">深度学习基础</div></div>
+        <div class="topic-card"><div class="emoji">📊</div><div class="name">监督学习</div><div class="desc">分类与回归</div></div>
+        <div class="topic-card"><div class="emoji">🔄</div><div class="name">反向传播</div><div class="desc">梯度计算方法</div></div>
+        <div class="topic-card"><div class="emoji">✨</div><div class="name">自定义主题</div><div class="desc">输入任意主题</div></div>
+      </div>
+      <div class="script-area">
+        <label>📝 课程脚本（AI 自动生成，可手动修改）</label>
+        <textarea>大家好，欢迎来到今天的课程！今天我们将一起学习决策树算法。决策树是一种非常直观的机器学习方法...</textarea>
+      </div>
+      <button class="gen-btn">🚀 生成教学视频</button>
+    </div>
+    <div class="preview-panel">
+      <div class="preview-box"><span>视频预览</span></div>
+      <div class="preview-info">
+        <div class="row"><span>主题</span><strong>决策树</strong></div>
+        <div class="row"><span>时长</span><strong>~60秒</strong></div>
+        <div class="row"><span>模板</span><strong>5个片段</strong></div>
+        <div class="row"><span>音色</span><strong>绫华</strong></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sep">- - - - - - - - - - - - - - - - - - - - - - - - - -</div>
+
+<!-- ===== 方案二：简约白 ===== -->
+<div class="mockup-section">
+  <div class="mockup-title">方案二：简约白 ☁️</div>
+  <div class="mockup-desc">参考产品：Gamma.app、轻竹办公。步骤进度条 + 左右分栏，温暖配色，新手友好。</div>
+
+  <div style="border:1px solid #eee; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.06);">
+    <div class="d2-header">
+      <h1>🎬 AI 微课制作</h1>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span style="font-size:13px;color:#999;">👨‍🏫 王老师</span>
+        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#ff6b6b,#ffa07a);display:flex;align-items:center;justify-content:center;color:white;font-size:14px;">王</div>
+      </div>
+    </div>
+    <div class="d2-body">
+      <div class="d2-steps">
+        <div class="d2-step done"><div class="num">✓</div><div class="label">选择主题</div></div>
+        <div class="d2-step active"><div class="num">2</div><div class="label">编辑内容</div></div>
+        <div class="d2-step"><div class="num">3</div><div class="label">预览导出</div></div>
+      </div>
+      <div class="d2-content">
+        <div class="d2-editor">
+          <div class="d2-card">
+            <h3>📝 课程标题</h3>
+            <input class="d2-input" value="决策树算法详解" />
+          </div>
+          <div class="d2-card">
+            <h3>🎯 教学目标</h3>
+            <input class="d2-input" value="理解决策树的原理和应用场景" />
+          </div>
+          <div class="d2-card">
+            <h3>📋 课程大纲 <span style="font-size:12px;color:#999;font-weight:400;">（拖拽排序）</span></h3>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:white;border-radius:8px;border:1px solid #eee;font-size:14px;">
+                <span style="color:#ccc;">⠿</span> <span style="background:#e0e7ff;color:#6366f1;padding:2px 8px;border-radius:4px;font-size:11px;">开场</span> 大家好，欢迎来到今天的课程
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:white;border-radius:8px;border:1px solid #eee;font-size:14px;">
+                <span style="color:#ccc;">⠿</span> <span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:4px;font-size:11px;">讲解</span> 什么是决策树？
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:white;border-radius:8px;border:1px solid #eee;font-size:14px;">
+                <span style="color:#ccc;">⠿</span> <span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:4px;font-size:11px;">讲解</span> 信息增益 vs 基尼系数
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:white;border-radius:8px;border:1px solid #eee;font-size:14px;">
+                <span style="color:#ccc;">⠿</span> <span style="background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:4px;font-size:11px;">总结</span> 优缺点与应用场景
+              </div>
+            </div>
+            <button style="margin-top:12px;padding:8px 16px;border:1px dashed #ddd;border-radius:8px;background:transparent;color:#999;font-size:13px;cursor:pointer;width:100%;">+ 添加段落</button>
+          </div>
+        </div>
+        <div class="d2-sidebar">
+          <div class="d2-tip">
+            <h4>💡 AI 建议</h4>
+            <p>决策树适合用对比动画来展示信息增益和基尼系数的区别，建议使用「概念对比」模板。</p>
+          </div>
+          <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">🎨 推荐模板</h3>
+          <div class="d2-templates">
+            <div class="d2-tpl"><div class="icon">📊</div><div class="name">要点总结</div></div>
+            <div class="d2-tpl"><div class="icon">🔀</div><div class="name">概念对比</div></div>
+            <div class="d2-tpl"><div class="icon">📈</div><div class="name">曲线下降</div></div>
+            <div class="d2-tpl"><div class="icon">🗺️</div><div class="name">数据流图</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sep">- - - - - - - - - - - - - - - - - - - - - - - - - -</div>
+
+<!-- ===== 方案三：卡片向导式 ===== -->
+<div class="mockup-section">
+  <div class="mockup-title">方案三：卡片向导式 🃏</div>
+  <div class="mockup-desc">参考产品：Canva 新建设计、Tome。大卡片选择 + 极简操作，零门槛上手。</div>
+
+  <div class="d3">
+    <div class="d3-header">
+      <h1>🎬 今天想讲什么？</h1>
+      <p>选择一个模板，AI 帮你自动生成教学视频</p>
+    </div>
+    <div class="d3-cards">
+      <div class="d3-card">
+        <div class="icon">🌳</div>
+        <h3>决策树</h3>
+        <p>分类算法 · 约60秒</p>
+      </div>
+      <div class="d3-card">
+        <div class="icon">📉</div>
+        <h3>梯度下降</h3>
+        <p>优化算法 · 约60秒</p>
+      </div>
+      <div class="d3-card">
+        <div class="icon">🧠</div>
+        <h3>神经网络</h3>
+        <p>深度学习 · 约90秒</p>
+      </div>
+    </div>
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="display:inline-flex;align-items:center;gap:8px;background:white;border-radius:12px;padding:14px 24px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+        <span style="font-size:20px;">✨</span>
+        <input style="border:none;outline:none;font-size:15px;width:260px;" placeholder="或者输入任意主题，比如：反向传播算法" />
+        <button style="background:linear-gradient(135deg,#818cf8,#6366f1);color:white;border:none;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">AI 生成</button>
+      </div>
+    </div>
+    <div class="d3-bottom">
+      <button class="d3-btn secondary">📁 从 Storyboard 导入</button>
+      <button class="d3-btn secondary">📋 历史记录</button>
+    </div>
+  </div>
+</div>
+
+<div class="sep">- - - - - - - - - - - - - - - - - - - - - - - - - -</div>
+
+<!-- ===== 对比总结 ===== -->
+<div class="mockup-section">
+  <div class="mockup-title">💡 设计思路对比</div>
+  <table style="width:100%;border-collapse:collapse;margin-top:16px;font-size:14px;">
+    <tr style="background:#f0f1f5;">
+      <th style="padding:12px;text-align:left;border-bottom:1px solid #ddd;">维度</th>
+      <th style="padding:12px;text-align:left;border-bottom:1px solid #ddd;">当前界面</th>
+      <th style="padding:12px;text-align:left;border-bottom:1px solid #ddd;">方案一</th>
+      <th style="padding:12px;text-align:left;border-bottom:1px solid #ddd;">方案二</th>
+      <th style="padding:12px;text-align:left;border-bottom:1px solid #ddd;">方案三</th>
+    </tr>
+    <tr><td style="padding:10px;border-bottom:1px solid #f0f0f0;">色调</td><td style="padding:10px;border-bottom:1px solid #f0f0f0;">深色/紫色</td><td style="padding:10px;border-bottom:1px solid #f0f0f0;">清新蓝紫</td><td style="padding:10px;border-bottom:1px solid #f0f0f0;">暖白/珊瑚</td><td style="padding:10px;border-bottom:1px solid #f0f0f0;">渐变蓝紫</td></tr>
+    <tr><td style="padding:10px;border-bottom:1px solid #f0f0f0;">布局</td><td style="padding:10px;border-bottom:1px solid #f0f0f0;">Tab 切换</td><td style="padding:10px;border-bottom:1px solid #f0f0f0;">侧边栏+预览</td><td style="padding:10px;border-bottom:1px solid #f0f0f0;">步骤进度条</td><td style="padding:10px;border-bottom:1px solid #f0f0f0;">大卡片向导</td></tr>
+    <tr><td style="padding:10px;border-bottom:1px solid #f0f0f0;">上手难度</td><td style="padding:10px;border-bottom:1px solid #f0f0f0;">高（需理解术语）</td><td style="padding:10px;border-bottom:1px solid #f0f0f0;">中</td><td style="padding:10px;border-bottom:1px solid #f0f0f0;">低</td><td style="padding:10px;border-bottom:1px solid #f0f0f0;">最低</td></tr>
+    <tr><td style="padding:10px;border-bottom:1px solid #f0f0f0;">适合场景</td><td style="padding:10px;border-bottom:1px solid #f0f0f0;">开发者调试</td><td style="padding:10px;border-bottom:1px solid #f0f0f0;">日常教学制作</td><td style="padding:10px;border-bottom:1px solid #f0f0f0;">教师备课</td><td style="padding:10px;border-bottom:1px solid #f0f0f0;">快速生成/演示</td></tr>
+    <tr><td style="padding:10px;">核心理念</td><td style="padding:10px;">功能完整</td><td style="padding:10px;">专业+美观</td><td style="padding:10px;">引导式体验</td><td style="padding:10px;">零门槛创作</td></tr>
+  </table>
+</div>

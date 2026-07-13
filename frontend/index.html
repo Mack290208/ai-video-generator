@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="AI 助教视频工坊 - 一键生成专业教学视频">
+<meta name="theme-color" content="#667eea">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+<title>AI 助教视频工坊</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- 顶部导航栏 -->
+<header class="app-header">
+  <div class="header-left">
+    <div class="logo">🎬 AI 助教视频工坊</div>
+  </div>
+  <div class="header-steps">
+    <div class="step active" data-step="topic"><span class="step-num">①</span> 选择主题</div>
+    <div class="step" data-step="edit"><span class="step-num">②</span> 编辑脚本</div>
+    <div class="step" data-step="generate"><span class="step-num">③</span> 生成视频</div>
+  </div>
+  <div class="header-right">
+    <div class="health-status">
+      <span id="statusDot" class="status-dot"></span>
+      <span id="statusText" data-i18n="checking">检测中...</span>
+    </div>
+    <select id="langSwitch" class="lang-switch" onchange="switchLang(this.value)">
+      <option value="zh">中文</option>
+      <option value="en">English</option>
+    </select>
+  </div>
+</header>
+
+<!-- 主体：侧边栏 + 内容 + 预览 -->
+<div class="app-body">
+
+  <!-- 左侧导航 -->
+  <nav class="sidebar">
+    <div class="nav-item active" data-nav="topic" onclick="goNav('topic')">
+      <span class="nav-icon">🎯</span><span class="nav-label">选择主题</span>
+    </div>
+    <div class="nav-item" data-nav="edit" onclick="goNav('edit')">
+      <span class="nav-icon">📝</span><span class="nav-label">编辑脚本</span>
+    </div>
+    <div class="nav-item" data-nav="templates" onclick="goNav('templates')">
+      <span class="nav-icon">🎨</span><span class="nav-label">模板库</span>
+    </div>
+    <div class="nav-item" data-nav="generate" onclick="goNav('generate')">
+      <span class="nav-icon">🚀</span><span class="nav-label">生成视频</span>
+    </div>
+    <div class="nav-item" data-nav="chat" onclick="goNav('chat')">
+      <span class="nav-icon">💬</span><span class="nav-label">AI 对话</span>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="nav-item" data-nav="settings" onclick="goNav('settings')">
+        <span class="nav-icon">⚙️</span><span class="nav-label">设置</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 中间内容区 -->
+  <main class="content">
+
+    <!-- ========== 步骤1：选择主题 ========== -->
+    <div class="page active" id="page-topic">
+      <h2 class="page-title">🎯 选择课程主题</h2>
+      <p class="page-desc">选择一个预设主题，或输入任意话题，AI 帮你规划课程内容</p>
+
+      <div class="topic-grid">
+        <div class="topic-card" onclick="loadPreset('decisionTree')">
+          <div class="topic-emoji">🌳</div>
+          <div class="topic-name">决策树</div>
+          <div class="topic-desc">分类算法基础 · ~60秒</div>
+        </div>
+        <div class="topic-card" onclick="loadPreset('gradientDescent')">
+          <div class="topic-emoji">📉</div>
+          <div class="topic-name">梯度下降</div>
+          <div class="topic-desc">优化算法入门 · ~60秒</div>
+        </div>
+        <div class="topic-card" onclick="loadPreset('supervised')">
+          <div class="topic-emoji">📊</div>
+          <div class="topic-name">监督学习</div>
+          <div class="topic-desc">分类与回归 · ~60秒</div>
+        </div>
+        <div class="topic-card" onclick="loadPreset('neuralNetwork')">
+          <div class="topic-emoji">🧠</div>
+          <div class="topic-name">神经网络</div>
+          <div class="topic-desc">深度学习基础 · ~90秒</div>
+        </div>
+        <div class="topic-card" onclick="loadPreset('backprop')">
+          <div class="topic-emoji">🔄</div>
+          <div class="topic-name">反向传播</div>
+          <div class="topic-desc">梯度计算方法 · ~60秒</div>
+        </div>
+        <div class="topic-card topic-custom" onclick="goNav('edit')">
+          <div class="topic-emoji">✨</div>
+          <div class="topic-name">自定义主题</div>
+          <div class="topic-desc">输入任意话题开始创作</div>
+        </div>
+      </div>
+
+      <div class="section-bar">
+        <span>📋 快速操作</span>
+      </div>
+      <div class="quick-actions">
+        <button class="btn btn-outline" onclick="importJSON()">📤 导入 Storyboard</button>
+        <button class="btn btn-outline" onclick="goNav('chat')">💬 让 AI 帮你规划</button>
+      </div>
+    </div>
+
+    <!-- ========== 步骤2：编辑脚本 ========== -->
+    <div class="page" id="page-edit">
+      <h2 class="page-title">📝 编辑课程脚本</h2>
+      <p class="page-desc">调整标题、旁白和段落顺序，右侧实时预览时长</p>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>📺 课程标题</label>
+          <input id="videoTitle" type="text" placeholder="例如：决策树算法详解" value="决策树详解">
+        </div>
+        <div class="form-group" style="max-width:160px">
+          <label>⏱️ 目标时长（秒）</label>
+          <input id="durationTarget" type="number" value="60" min="10" max="600">
+        </div>
+      </div>
+
+      <div class="section-bar">
+        <span>🎬 课程段落</span>
+        <div class="section-actions">
+          <button class="btn btn-sm btn-ghost" onclick="autoIntroOutro()">🎯 自动开场+结尾</button>
+          <button class="btn btn-sm btn-primary" onclick="addSegment('','')">
+            ＋ 添加段落
+          </button>
+        </div>
+      </div>
+
+      <div id="segmentsContainer" class="segments-container">
+        <p class="empty-hint">点击「选择主题」加载预设，或点击「添加段落」开始创作</p>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-outline" onclick="exportJSON()">📥 导出 JSON</button>
+        <button class="btn btn-primary" onclick="goNav('generate')">下一步：生成视频 →</button>
+      </div>
+    </div>
+
+    <!-- ========== 模板库 ========== -->
+    <div class="page" id="page-templates">
+      <h2 class="page-title">🎨 模板库</h2>
+      <p class="page-desc">查看可用的 Manim 动画模板，点击查看详情</p>
+      <div class="form-actions" style="margin-bottom:16px">
+        <button class="btn btn-primary" onclick="loadTemplates()">🔄 刷新模板</button>
+      </div>
+      <div id="templatesGrid" class="templates-grid">
+        <p class="empty-hint">点击「刷新模板」获取可用模板列表</p>
+      </div>
+    </div>
+
+    <!-- ========== 步骤3：生成视频 ========== -->
+    <div class="page" id="page-generate">
+      <h2 class="page-title">🚀 生成教学视频</h2>
+      <p class="page-desc">确认 Storyboard 后一键生成，支持纯 TTS 或完整视频</p>
+
+      <div class="generate-layout">
+        <div class="generate-left">
+          <div class="section-bar"><span>📋 Storyboard JSON</span></div>
+          <textarea id="jsonPreview" class="json-preview" readonly></textarea>
+          <div class="json-actions">
+            <button class="btn btn-sm btn-ghost" onclick="copyJSON()">📋 复制</button>
+            <button class="btn btn-sm btn-ghost" onclick="exportJSON()">📥 导出</button>
+            <button class="btn btn-sm btn-ghost" onclick="importJSON()">📤 导入</button>
+          </div>
+        </div>
+        <div class="generate-right">
+          <button id="btnGenerate" class="btn btn-generate" onclick="generateVideo()">
+            🎬 开始生成
+          </button>
+          <div class="progress-bar">
+            <div id="progressFill" class="progress-fill" style="width:0%"></div>
+          </div>
+          <div id="progressText" class="progress-text" data-i18n="genReady">就绪</div>
+
+          <div class="section-bar" style="margin-top:16px"><span>📋 运行日志</span></div>
+          <div id="logBox" class="log-box">等待开始...</div>
+        </div>
+      </div>
+
+      <!-- 生成结果 -->
+      <div id="resultBox" class="result-box" style="display:none">
+        <div class="section-bar"><span>✅ 生成结果</span></div>
+        <div id="resultContent"></div>
+      </div>
+
+      <!-- 视频预览 -->
+      <div id="previewContainer" class="video-preview-container" style="display:none">
+        <div class="section-bar"><span>🎬 视频预览</span></div>
+        <video id="previewVideo" controls class="video-player"></video>
+      </div>
+    </div>
+
+    <!-- ========== AI 对话 ========== -->
+    <div class="page" id="page-chat">
+      <h2 class="page-title">💬 AI 助教对话</h2>
+      <p class="page-desc">告诉 AI 你想生成什么样的教学视频，它会帮你规划 Storyboard</p>
+
+      <div class="chat-container">
+        <div class="chat-model-bar">
+          <label>🤖 选择模型：</label>
+          <select id="modelSelect" class="model-select" onchange="onModelChange(this.value)">
+            <option value="">加载中...</option>
+          </select>
+          <span id="modelStatus" class="model-status"></span>
+        </div>
+        <div id="chatBox" class="chat-box">
+          <div class="chat-msg bot">
+            <div class="chat-bubble" data-i18n="chatWelcome">你好！我是 AI 助教，告诉我你想生成什么样的教学视频？</div>
+          </div>
+        </div>
+        <div class="chat-input-bar">
+          <textarea id="chatInput" class="chat-input" rows="1" data-i18n="chatPlaceholder" placeholder="输入你的需求，例如：帮我生成一个讲梯度下降的视频..."></textarea>
+          <div class="chat-buttons">
+            <button class="btn btn-primary" onclick="sendChat()" data-i18n="chatSend">发送</button>
+            <button class="btn btn-success" onclick="quickGenerate()">🎬 快速生成</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 设置 ========== -->
+    <div class="page" id="page-settings">
+      <h2 class="page-title">⚙️ Pipeline 设置</h2>
+      <p class="page-desc">调整视频生成参数和界面偏好</p>
+
+      <div class="settings-grid">
+        <div class="settings-card">
+          <h3>🎬 Manim 画质</h3>
+          <select id="settQuality">
+            <option value="low">低（快速预览）</option>
+            <option value="medium" selected>中（默认）</option>
+            <option value="high">高（最终输出）</option>
+          </select>
+        </div>
+        <div class="settings-card">
+          <h3>📐 字幕对齐</h3>
+          <select id="settWhisper">
+            <option value="true">启用 WhisperX</option>
+            <option value="false">禁用</option>
+          </select>
+        </div>
+        <div class="settings-card">
+          <h3>🔊 语速</h3>
+          <select id="settSpeed">
+            <option value="0.8">0.8x 慢速</option>
+            <option value="1.0" selected>1.0x 正常</option>
+            <option value="1.2">1.2x 快速</option>
+          </select>
+        </div>
+        <div class="settings-card">
+          <h3>📝 字幕字号</h3>
+          <select id="settFontSize">
+            <option value="14">14px 小</option>
+            <option value="18" selected>18px 中</option>
+            <option value="24">24px 大</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-bar" style="margin-top:20px"><span>🌐 界面语言</span></div>
+      <select id="settLang" onchange="switchLang(this.value)">
+        <option value="zh">中文</option>
+        <option value="en">English</option>
+      </select>
+
+      <div class="form-actions" style="margin-top:20px">
+        <button class="btn btn-primary" onclick="saveSettings()">💾 保存设置</button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- 右侧实时预览 -->
+  <aside class="preview-panel">
+    <div class="preview-title">📊 实时预览</div>
+    <div class="preview-video-box">
+      <span>视频预览区</span>
+    </div>
+    <div class="preview-info">
+      <div class="preview-row">
+        <span>📺 标题</span>
+        <strong id="previewTitle">未设置</strong>
+      </div>
+      <div class="preview-row">
+        <span>⏱️ 预估时长</span>
+        <strong id="estDuration">0.0s</strong>
+      </div>
+      <div class="preview-row">
+        <span>🎬 段落数</span>
+        <strong id="segCount">0</strong>
+      </div>
+      <div class="preview-row">
+        <span>🔊 音色</span>
+        <strong>神里绫华</strong>
+      </div>
+      <div class="preview-row">
+        <span>📐 画质</span>
+        <strong id="previewQuality">中</strong>
+      </div>
+    </div>
+    <div class="preview-segments" id="previewSegments">
+      <div class="preview-empty">暂无段落</div>
+    </div>
+  </aside>
+
+</div>
+
+<!-- Toast -->
+<div id="toastContainer" class="toast-container"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
