@@ -122,35 +122,38 @@ python server.py
 ## 📁 项目结构
 
 ```
-临时python骨架穿透文件/
-├── server.py                 # FastAPI 服务器
-├── launcher.py               # 一键启动脚本
-├── storyboard_pipeline.py    # 视频生成流程
-├── llm_storyboard_service.py # LLM storyboard 生成
-├── llm_codegen_service.py    # LLM 代码生成（方案C）
-├── batch_generate.py         # 批量生成脚本
-├── .env                      # 环境变量配置
-├── requirements.txt          # Python 依赖
-├── frontend/                 # 前端界面
-│   ├── index.html
-│   ├── style.css
-│   └── app.js
-├── services/                 # 核心服务
+├── server.py                    # FastAPI 入口
+├── run_full_pipeline_v2.py      # 完整pipeline一键运行
+├── run_from_storyboard.py       # 分镜驱动生成
+├── llm_chat_service.py          # LLM对话服务
+├── llm_storyboard_service.py    # LLM分镜生成
+├── llm_codegen_service.py       # LLM代码生成
+├── services/                    # 核心服务
 │   ├── tts_service.py
 │   ├── manim_service.py
 │   ├── subtitle_service.py
-│   └── composition_service.py
-├── templates/                # Manim 模板
-│   ├── common.py
-│   ├── intro_v2.py
-│   ├── bullet_summary.py
-│   ├── neural_network.py
-│   └── ...
-├── outputs/                  # 生成的视频
-│   ├── audio/
-│   ├── subtitles/
-│   └── video/
-└── media/                    # Manim 媒体文件
+│   ├── composition_service.py
+│   └── whisper_align_service.py
+├── templates/                   # 16个Manim动画模板
+│   ├── intro_v2.py              # 片头
+│   ├── neural_network.py        # 神经网络
+│   ├── decision_tree.py         # 决策树
+│   ├── confusion_matrix.py      # 混淆矩阵
+│   ├── knn_demo.py              # KNN演示
+│   ├── overfitting.py           # 过拟合
+│   └── ...                      # 更多模板
+├── scripts/                     # 生成脚本 & 工具
+│   ├── approach1_storyboard.py  # 方案A：分镜批量
+│   ├── approach3_*.py           # 方案C：全脚本
+│   ├── batch_generate.py        # 批量生成
+│   └── rebuild_*.py             # 重建工具
+├── tests/                       # 测试套件
+├── docs/                        # 文档
+│   ├── MiMo_API配置指南.md
+│   └── 第一版功能清单.md
+├── frontend/                    # Web前端
+├── components/ / layouts/       # Manim组件
+└── manim_scenes/                # 场景文件
 ```
 
 ## 🧪 测试
