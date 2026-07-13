@@ -3,6 +3,9 @@ test_catalog_dump.py
 --------------------
 验证 dump_template_catalog 输出能直接喂 LLM。
 """
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+
 from __future__ import annotations
 import json
 import sys

@@ -1,4 +1,7 @@
-"""test_formula_evolve.py - 第 2 个新模板烟雾测试"""
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+1|"""test_formula_evolve.py - 第 2 个新模板烟雾测试"""
 from __future__ import annotations
 import sys
 from pathlib import Path

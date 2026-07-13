@@ -6,6 +6,8 @@ test_v2_manim_only.py
 - 走完整的 manim 渲染 + composition_service 合成
 - 验证 v2 模板（intro_v2 / curve_descent）+ legacy 模板（outro）能在同一 pipeline 里混用
 """
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 
 from __future__ import annotations
 

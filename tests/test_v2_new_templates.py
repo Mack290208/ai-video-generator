@@ -5,6 +5,8 @@ test_v2_new_templates.py
 - bullet_summary（v2 替代 outro）
 - lr_comparison  （新增的"学习率对比"教学模板）
 """
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 
 from __future__ import annotations
 

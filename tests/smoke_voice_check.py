@@ -1,4 +1,7 @@
-"""快速 TTS 烟雾：1 句话验证服务 + 神里音色 + 权重正常"""
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+1|"""快速 TTS 烟雾：1 句话验证服务 + 神里音色 + 权重正常"""
 from __future__ import annotations
 import sys
 from pathlib import Path

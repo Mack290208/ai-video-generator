@@ -1,4 +1,7 @@
-"""快速检查合成链路的中间产物。"""
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+1|"""快速检查合成链路的中间产物。"""
 import tempfile, shutil
 from pathlib import Path
 from services.composition_service import _pad_or_trim_video, _concat_videos, probe_duration

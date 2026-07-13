@@ -1,4 +1,7 @@
-"""快速 smoke test - concept_compare 不带公式版本"""
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+1|"""快速 smoke test - concept_compare 不带公式版本"""
 from __future__ import annotations
 import sys
 from pathlib import Path

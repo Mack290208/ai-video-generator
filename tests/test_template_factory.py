@@ -10,6 +10,8 @@ test_template_factory.py
 4. render_manim_scene("curve_descent", params={...}) 能跑通
 5. 旧的 legacy 模板（gradient_descent / intro / outro）依然能跑
 """
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 
 from __future__ import annotations
 

@@ -5,6 +5,8 @@ test_concept_compare.py
 
 用决策树视频里 LLM 标记缺失的"信息增益 vs 基尼系数"作为典型样本验证。
 """
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 
 from __future__ import annotations
 

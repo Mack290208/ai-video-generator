@@ -5,6 +5,9 @@ test_tts_resilience.py — 验证 A1 改造：TTS 重试 + 健康检查 + 静默
   1. happy path：服务活着，正常合成
   2. fallback path：故意指到死端口，验证重试穷尽后写出静默 wav，pipeline 不挂
 """
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+
 from __future__ import annotations
 
 import sys
